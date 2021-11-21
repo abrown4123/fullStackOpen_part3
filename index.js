@@ -3,7 +3,7 @@ const express = require("express"),
       cors = require("cors");
       app = express();
 
-// app.use(express.static('build'))
+app.use(express.static('build'))
 app.use(express.json())
 app.use(cors())
 
