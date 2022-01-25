@@ -67,29 +67,28 @@ app.get("/api/persons/:id", (request, response) => {
 
 app.post("/api/persons", (request, response) => {
   const body = request.body
-  const duplicateEntry = people.find(entry => entry.name === body.name)
-  
+  // Not required to find the duplicate from db yet
+  // const duplicateEntry = people.find(entry => entry.name === body.name) 
+  // if (duplicateEntry) {
+  //   return response.status(400).json({
+  //     error: 'name already exists'
+  //   })
+  // }
+
   if (!body.name || !body.number) {
     return response.status(400).json({
       error: 'name or number is missing'
     })
   }
-
-  if (duplicateEntry) {
-    return response.status(400).json({
-      error: 'name already exists'
-    })
-  }
   
-  const person = {
+  const person = new Entry({
     name: body.name,
-    number: body.number,
-    id: generateId()
-  }
+    number: body.number
+  })
 
-  people = people.concat(person)
-
-  response.json(person)
+  person.save().then(savedEntry => {
+    response.json(savedEntry)
+  })
 })
 
 app.delete("/api/persons/:id", (request, response) => {
