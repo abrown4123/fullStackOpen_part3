@@ -47,7 +47,9 @@ const generateId = () => {
 }
 
 app.get("/info", (request, response) => {
-  response.send(`<p>Phonebook has info for ${people.length} people</p><p>${new Date()}</p>`)
+  Entry.find({}).then(result => {
+    response.send(`<p>Phonebook has info for ${result.length} people</p><p>${new Date()}</p>`)
+  })
 })
 
 app.get("/api/persons", (request, response) => {
@@ -57,26 +59,31 @@ app.get("/api/persons", (request, response) => {
 })
 
 app.get("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id)
-  const person = people.find(entry => entry.id === id)
-  
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
+  Entry.findById(request.params.id)
+    .then(requestedEntry => {
+      response.json(requestedEntry)
+    })
+    .catch(error => next(error))
+})
+
+app.put("/api/persons/:id", (request, response) => {
+  const body = request.body;
+
+  const entry = {
+    name: body.name,
+    number: body.number
   }
+
+  Entry.findByIdAndUpdate(request.params.id, entry, {new: true})
+    .then(updatedEntry => {
+      response.json(updatedEntry)
+    })
+    .catch(error => next(error))
 })
 
 app.post("/api/persons", (request, response) => {
   const body = request.body
-  // Not required to find the duplicate from db yet
-  // const duplicateEntry = people.find(entry => entry.name === body.name) 
-  // if (duplicateEntry) {
-  //   return response.status(400).json({
-  //     error: 'name already exists'
-  //   })
-  // }
-
+  
   if (!body.name || !body.number) {
     return response.status(400).json({
       error: 'name or number is missing'
@@ -101,8 +108,8 @@ app.delete("/api/persons/:id", (request, response, next) => {
     .catch(error => next(error))
 })
 
-app.use(unknownEndpoint)
-app.use(errorHandler)
+app.use(unknownEndpoint) //used if endpoint doesn't exist
+app.use(errorHandler) //used to catch more specific errors returned by requests
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
