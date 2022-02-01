@@ -1,10 +1,12 @@
 const express = require("express"),
       morgan = require("morgan"),
       Entry = require("./models/entry"),
+      { unknownEndpoint, errorHandler } = require("./middleware/error")
       cors = require("cors"),
       app = express();
-
+// console.log(errorHandlers)
 app.use(express.static('build'))
+
 app.use(express.json())
 app.use(cors())
 
@@ -91,11 +93,16 @@ app.post("/api/persons", (request, response) => {
   })
 })
 
-app.delete("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id)
-  people = people.filter(entry => entry.id !== id)
-  response.status(204).end()
+app.delete("/api/persons/:id", (request, response, next) => {
+  Entry.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
 })
+
+app.use(unknownEndpoint)
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
