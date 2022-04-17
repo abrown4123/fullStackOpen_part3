@@ -1,9 +1,12 @@
 const express = require("express"),
       morgan = require("morgan"),
-      cors = require("cors");
+      Entry = require("./models/entry"),
+      { unknownEndpoint, errorHandler } = require("./middleware/error")
+      cors = require("cors"),
       app = express();
-
+// console.log(errorHandlers)
 app.use(express.static('build'))
+
 app.use(express.json())
 app.use(cors())
 
@@ -44,56 +47,69 @@ const generateId = () => {
 }
 
 app.get("/info", (request, response) => {
-  response.send(`<p>Phonebook has info for ${people.length} people</p><p>${new Date()}</p>`)
+  Entry.find({}).then(result => {
+    response.send(`<p>Phonebook has info for ${result.length} people</p><p>${new Date()}</p>`)
+  })
 })
 
 app.get("/api/persons", (request, response) => {
-  response.json(people);
+  Entry.find({}).then(result => {
+    response.json(result)
+  })
 })
 
 app.get("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id)
-  const person = people.find(entry => entry.id === id)
-  
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
+  Entry.findById(request.params.id)
+    .then(requestedEntry => {
+      response.json(requestedEntry)
+    })
+    .catch(error => next(error))
+})
+
+app.put("/api/persons/:id", (request, response) => {
+  const body = request.body;
+
+  const entry = {
+    name: body.name,
+    number: body.number
   }
+
+  Entry.findByIdAndUpdate(request.params.id, entry, {new: true})
+    .then(updatedEntry => {
+      response.json(updatedEntry)
+    })
+    .catch(error => next(error))
 })
 
 app.post("/api/persons", (request, response) => {
   const body = request.body
-  const duplicateEntry = people.find(entry => entry.name === body.name)
   
   if (!body.name || !body.number) {
     return response.status(400).json({
       error: 'name or number is missing'
     })
   }
-
-  if (duplicateEntry) {
-    return response.status(400).json({
-      error: 'name already exists'
-    })
-  }
   
-  const person = {
+  const person = new Entry({
     name: body.name,
-    number: body.number,
-    id: generateId()
-  }
+    number: body.number
+  })
 
-  people = people.concat(person)
-
-  response.json(person)
+  person.save().then(savedEntry => {
+    response.json(savedEntry)
+  })
 })
 
-app.delete("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id)
-  people = people.filter(entry => entry.id !== id)
-  response.status(204).end()
+app.delete("/api/persons/:id", (request, response, next) => {
+  Entry.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
 })
+
+app.use(unknownEndpoint) //used if endpoint doesn't exist
+app.use(errorHandler) //used to catch more specific errors returned by requests
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
